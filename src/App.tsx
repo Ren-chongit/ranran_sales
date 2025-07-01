@@ -623,8 +623,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<'sales' | 'count'>('sales');
   const [baseDate, setBaseDate] = useState<Date>(() => {
-    const yesterday = new Date();
+    const today = new Date();
+    const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    console.log('初期基準日設定:', yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0'));
     return yesterday;
   });
   const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
@@ -637,13 +639,14 @@ function App() {
       setError(null);
       console.log('基準日変更:', targetDate);
       
-      // 常に最新のJSONファイル（2025-06-30.json）を使用
-      const latestDate = new Date();
-      latestDate.setDate(latestDate.getDate() - 1);
-      const latestDateStr = latestDate.toISOString().substring(0, 10);
+      // 基準日に対応するJSONファイルを使用（ローカル時刻で計算）
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const latestDateStr = `${year}-${month}-${day}`;
       const filename = `${latestDateStr}.json`;
       
-      console.log(`使用するデータファイル: ${filename}, 基準日: ${targetDate.toISOString().substring(0, 10)}`);
+      console.log(`使用するデータファイル: ${filename}, 基準日: ${latestDateStr}`);
       
       // 既にデータが読み込まれている場合は再利用
       if (salesData && yearlyData && Object.keys(yearlyData).length > 0) {
@@ -796,14 +799,17 @@ function App() {
                   </div>
                   <input
                     type="date"
-                    value={baseDate.toISOString().substring(0, 10)}
+                    value={`${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`}
                     onChange={(e) => {
                       const newDate = new Date(e.target.value);
                       setBaseDate(newDate);
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="2023-01-01"
-                    max={new Date().toISOString().substring(0, 10)}
+                    max={(() => {
+                      const today = new Date();
+                      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                    })()}
                   />
                 </div>
               ) : (
@@ -825,7 +831,7 @@ function App() {
                 </div>
               )}
             </div>
-            <p className="text-gray-600">選択中の基準日: {baseDate.toISOString().substring(0, 10)}</p>
+            <p className="text-gray-600">選択中の基準日: {`${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`}</p>
             <p className="text-gray-600">使用データファイル: {salesData.generated_at}</p>
             <p className="text-gray-500 text-sm mt-2">※ 売上データがない日は0として表示されます</p>
             <p className="text-gray-600">総レコード数: {salesData.total_records.toLocaleString()}件</p>
