@@ -128,13 +128,11 @@ const calculateComparisons = (yearlyData: YearlyData, baseDate: Date): Compariso
     const weeklyTotal = { sales: 0, count: 0 };
     for (let i = 6; i >= 0; i--) {
       const date = new Date(parseInt(year), baseMonth - 1, baseDay - i);
-      if (date.getMonth() === baseMonth - 1) { // 同じ月内のみ
-        const dateStr = `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-        const dayData = yearData.find(d => d.date === dateStr);
-        if (dayData) {
-          weeklyTotal.sales += dayData.sales;
-          weeklyTotal.count += dayData.count;
-        }
+      const dateStr = `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      const dayData = yearData.find(d => d.date === dateStr);
+      if (dayData) {
+        weeklyTotal.sales += dayData.sales;
+        weeklyTotal.count += dayData.count;
       }
     }
     result.weekly[year] = weeklyTotal;
