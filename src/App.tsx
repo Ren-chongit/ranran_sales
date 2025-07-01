@@ -124,15 +124,17 @@ const calculateComparisons = (yearlyData: YearlyData, baseDate: Date): Compariso
     console.log(`${year}年 ${targetDateStr}:`, dailyData || 'データなし');
     result.daily[year] = dailyData ? { sales: dailyData.sales, count: dailyData.count } : { sales: 0, count: 0 };
     
-    // 週間計算（基準日を含む過去7日間）
+    // 週間計算（基準日を含む過去7日間、同月内のみ）
     const weeklyTotal = { sales: 0, count: 0 };
     for (let i = 6; i >= 0; i--) {
       const date = new Date(parseInt(year), baseMonth - 1, baseDay - i);
-      const dateStr = `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-      const dayData = yearData.find(d => d.date === dateStr);
-      if (dayData) {
-        weeklyTotal.sales += dayData.sales;
-        weeklyTotal.count += dayData.count;
+      if (date.getMonth() === baseMonth - 1) { // 同じ月内のみ
+        const dateStr = `${year}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+        const dayData = yearData.find(d => d.date === dateStr);
+        if (dayData) {
+          weeklyTotal.sales += dayData.sales;
+          weeklyTotal.count += dayData.count;
+        }
       }
     }
     result.weekly[year] = weeklyTotal;
@@ -154,6 +156,13 @@ const calculateComparisons = (yearlyData: YearlyData, baseDate: Date): Compariso
       weekly: result.weekly[year], 
       monthly: result.monthly[year]
     });
+    
+    // デバッグ: 6月1日の場合の詳細ログ
+    if (baseMonth === 6 && baseDay === 1) {
+      console.log(`${year}年6月1日デバッグ:`);
+      console.log('週間対象日: 6/1のみ（同月内制限）');
+      console.log('月間対象日: 6/1のみ');
+    }
   });
   
   console.log('比較計算完了:', result);
