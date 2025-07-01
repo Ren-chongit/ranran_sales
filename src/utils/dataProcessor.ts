@@ -1,4 +1,4 @@
-import { SalesData, SalesRecord, YearlyData, ProcessedData, ComparisonData } from '../types/SalesData';
+import type { SalesData, SalesRecord, YearlyData, ProcessedData, ComparisonData } from '../types/SalesData';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isWithinInterval, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 

@@ -10,7 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { YearlyData } from '../types/SalesData';
+import type { YearlyData } from '../types/SalesData';
 import { format, parseISO } from 'date-fns';
 
 ChartJS.register(
@@ -46,12 +46,12 @@ const YearlySalesChart: React.FC<YearlySalesChartProps> = ({ data, metric }) => 
   const sortedDates = Array.from(allDates).sort();
 
   // 月単位でラベルを作成（表示用）
-  const monthlyLabels = sortedDates.filter((date, index) => {
-    const currentDate = parseISO(date);
-    if (index === 0) return true;
-    const prevDate = parseISO(sortedDates[index - 1]);
-    return currentDate.getMonth() !== prevDate.getMonth();
-  }).map(date => format(parseISO(date), 'yyyy/MM'));
+  // const monthlyLabels = sortedDates.filter((date, index) => {
+  //   const currentDate = parseISO(date);
+  //   if (index === 0) return true;
+  //   const prevDate = parseISO(sortedDates[index - 1]);
+  //   return currentDate.getMonth() !== prevDate.getMonth();
+  // }).map(date => format(parseISO(date), 'yyyy/MM'));
 
   const datasets = years.map(year => {
     const yearData = data[year] || [];

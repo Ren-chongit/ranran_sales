@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { ComparisonData } from '../types/SalesData';
+import type { ComparisonData } from '../types/SalesData';
 
 ChartJS.register(
   CategoryScale,

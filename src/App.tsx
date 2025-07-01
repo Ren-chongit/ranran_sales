@@ -377,11 +377,11 @@ const YearlySalesChart: React.FC<{
           pinch: {
             enabled: true,
           },
-          mode: 'x',
+          mode: 'x' as const,
         },
         pan: {
           enabled: true,
-          mode: 'x',
+          mode: 'x' as const,
         },
       },
     },
@@ -405,7 +405,7 @@ const YearlySalesChart: React.FC<{
         },
       },
     },
-  };
+  } as const;
 
   return (
     <div>
@@ -494,7 +494,7 @@ function App() {
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday;
   });
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  // const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   const loadDataForDate = async (targetDate: Date) => {
     try {
