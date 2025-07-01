@@ -283,6 +283,100 @@ const ComparisonChart: React.FC<{
   );
 };
 
+// 月別比較チャートコンポーネント
+const MonthlyComparisonChart: React.FC<{
+  data: YearlyData;
+  metric: 'sales' | 'count';
+  month: number;
+}> = ({ data, metric, month }) => {
+  const years = ['2023', '2024', '2025'];
+  const colors = ['rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 101, 101, 1)'];
+
+  // 指定月のデータのみ抽出
+  const monthlyData = years.map((year, index) => {
+    const yearData = data[year] || [];
+    const monthData = yearData.filter(d => {
+      const date = new Date(d.date);
+      return date.getMonth() + 1 === month;
+    }).sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      label: `${year}年`,
+      data: monthData.map(d => ({ x: new Date(d.date).getDate(), y: d[metric] })),
+      borderColor: colors[index],
+      backgroundColor: colors[index],
+      tension: 0.1,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+    };
+  });
+
+  const chartData = {
+    datasets: monthlyData,
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+        },
+      },
+      title: {
+        display: true,
+        text: `${month}月 年別比較 - ${metric === 'sales' ? '売上金額' : '件数'}`,
+        padding: {
+          bottom: 20,
+        },
+      },
+    },
+    scales: {
+      x: {
+        type: 'linear' as const,
+        display: true,
+        title: {
+          display: true,
+          text: '日',
+        },
+        min: 1,
+        max: 31,
+        ticks: {
+          stepSize: 1,
+          callback: function(value: any) {
+            return `${value}日`;
+          },
+        },
+      },
+      y: {
+        display: true,
+        title: {
+          display: true,
+          text: metric === 'sales' ? '売上金額' : '件数',
+        },
+        ticks: {
+          callback: function(value: any) {
+            if (metric === 'sales') {
+              return `¥${value.toLocaleString()}`;
+            } else {
+              return `${value}件`;
+            }
+          },
+        },
+      },
+    },
+  };
+
+  return (
+    <div style={{ height: '400px', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+      <Line data={chartData} options={options} />
+    </div>
+  );
+};
+
 // 年別推移チャートコンポーネント
 const YearlySalesChart: React.FC<{
   data: YearlyData;
@@ -501,6 +595,8 @@ function App() {
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday;
   });
+  const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   // const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   const loadDataForDate = async (targetDate: Date) => {
@@ -600,51 +696,102 @@ function App() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">データ概要</h2>
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-medium mb-2">
-                基準日を選択:
+                表示モード:
               </label>
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex space-x-4 mb-4">
                 <button
                   onClick={() => {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    setBaseDate(yesterday);
+                    setViewMode('daily');
                   }}
-                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    viewMode === 'daily'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                  }`}
                 >
-                  昨日
+                  日別比較
                 </button>
                 <button
                   onClick={() => {
-                    const oneWeekAgo = new Date();
-                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                    setBaseDate(oneWeekAgo);
+                    setViewMode('monthly');
                   }}
-                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    viewMode === 'monthly'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                  }`}
                 >
-                  1週間前
-                </button>
-                <button
-                  onClick={() => {
-                    const oneMonthAgo = new Date();
-                    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-                    setBaseDate(oneMonthAgo);
-                  }}
-                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  1ヶ月前
+                  月別比較
                 </button>
               </div>
-              <input
-                type="date"
-                value={baseDate.toISOString().substring(0, 10)}
-                onChange={(e) => {
-                  const newDate = new Date(e.target.value);
-                  setBaseDate(newDate);
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                min="2023-01-01"
-                max={new Date().toISOString().substring(0, 10)}
-              />
+
+              {viewMode === 'daily' ? (
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">
+                    基準日を選択:
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <button
+                      onClick={() => {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        setBaseDate(yesterday);
+                      }}
+                      className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      昨日
+                    </button>
+                    <button
+                      onClick={() => {
+                        const oneWeekAgo = new Date();
+                        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                        setBaseDate(oneWeekAgo);
+                      }}
+                      className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      1週間前
+                    </button>
+                    <button
+                      onClick={() => {
+                        const oneMonthAgo = new Date();
+                        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                        setBaseDate(oneMonthAgo);
+                      }}
+                      className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      1ヶ月前
+                    </button>
+                  </div>
+                  <input
+                    type="date"
+                    value={baseDate.toISOString().substring(0, 10)}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value);
+                      setBaseDate(newDate);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="2023-01-01"
+                    max={new Date().toISOString().substring(0, 10)}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">
+                    月を選択:
+                  </label>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                      <option key={month} value={month}>
+                        {month}月
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <p className="text-gray-600">選択中の基準日: {baseDate.toISOString().substring(0, 10)}</p>
             <p className="text-gray-600">使用データファイル: {salesData.generated_at}</p>
@@ -680,55 +827,64 @@ function App() {
           </div>
         </div>
 
-        {/* 比較チャート */}
-        {comparisonData && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <ComparisonChart data={comparisonData} type="daily" metric={selectedMetric} />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <ComparisonChart data={comparisonData} type="weekly" metric={selectedMetric} />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <ComparisonChart data={comparisonData} type="monthly" metric={selectedMetric} />
-            </div>
-          </div>
-        )}
-
-        {/* 年別推移チャート */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <YearlySalesChart data={yearlyData} metric={selectedMetric} />
-        </div>
-
-        {/* 数値サマリー */}
-        {comparisonData && (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">数値サマリー</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['daily', 'weekly', 'monthly'].map((period) => (
-                <div key={period} className="border rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-3">
-                    {period === 'daily' ? '当日比較' : period === 'weekly' ? '週間比較' : '月間比較'}
-                  </h3>
-                  <div className="space-y-2">
-                    {['2023', '2024', '2025'].map((year) => {
-                      const data = comparisonData[period as keyof ComparisonData][year];
-                      return (
-                        <div key={year} className="flex justify-between">
-                          <span className="text-gray-600">{year}年:</span>
-                          <span className="font-medium">
-                            {selectedMetric === 'sales' 
-                              ? `¥${data.sales.toLocaleString()}` 
-                              : `${data.count}件`
-                            }
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+        {viewMode === 'daily' ? (
+          <>
+            {/* 比較チャート */}
+            {comparisonData && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <ComparisonChart data={comparisonData} type="daily" metric={selectedMetric} />
                 </div>
-              ))}
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <ComparisonChart data={comparisonData} type="weekly" metric={selectedMetric} />
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <ComparisonChart data={comparisonData} type="monthly" metric={selectedMetric} />
+                </div>
+              </div>
+            )}
+
+            {/* 年別推移チャート */}
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <YearlySalesChart data={yearlyData} metric={selectedMetric} />
             </div>
+
+            {/* 数値サマリー */}
+            {comparisonData && (
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">数値サマリー</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {['daily', 'weekly', 'monthly'].map((period) => (
+                    <div key={period} className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-800 mb-3">
+                        {period === 'daily' ? '当日比較' : period === 'weekly' ? '週間比較' : '月間比較'}
+                      </h3>
+                      <div className="space-y-2">
+                        {['2023', '2024', '2025'].map((year) => {
+                          const data = comparisonData[period as keyof ComparisonData][year];
+                          return (
+                            <div key={year} className="flex justify-between">
+                              <span className="text-gray-600">{year}年:</span>
+                              <span className="font-medium">
+                                {selectedMetric === 'sales' 
+                                  ? `¥${data.sales.toLocaleString()}` 
+                                  : `${data.count}件`
+                                }
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* 月別比較モード */
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+            <MonthlyComparisonChart data={yearlyData} metric={selectedMetric} month={selectedMonth} />
           </div>
         )}
         
