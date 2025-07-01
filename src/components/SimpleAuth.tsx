@@ -40,7 +40,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-sm w-full mx-4">
+        <div className="bg-white p-8 rounded-lg shadow-md w-custom mx-4">
           <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
             売上管理システム
           </h1>

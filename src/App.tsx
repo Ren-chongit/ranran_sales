@@ -586,7 +586,7 @@ function App() {
     <SimpleAuth>
       <div className="min-h-screen bg-blue-50 pb-16">
         <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-blue-900 mb-6">売上管理ダッシュボード</h1>
+        <h1 className="text-3xl font-bold text-blue-900 mb-6">管理ダッシュボード</h1>
         
         {salesData && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">

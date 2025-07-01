@@ -511,6 +511,6 @@ body {
   max-width: 32rem;
 }
 
-.max-w-sm {
-  max-width: 300px;
+.w-custom {
+  width: 364px; /* 300px + padding 32px (8*4) */
 }
