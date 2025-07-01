@@ -1,6 +1,5 @@
-import type { SalesData, SalesRecord, YearlyData, ProcessedData, ComparisonData } from '../types/SalesData';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format, isWithinInterval, parseISO } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import type { SalesData, SalesRecord, YearlyData, ComparisonData } from '../types/SalesData';
+import { startOfWeek, startOfMonth, format, isWithinInterval, parseISO } from 'date-fns';
 
 export const loadSalesData = async (filename: string): Promise<SalesData | null> => {
   try {
