@@ -370,9 +370,41 @@ const MonthlyComparisonChart: React.FC<{
     },
   };
 
+  // 月合計値を計算
+  const monthlyTotals = years.map(year => {
+    const yearData = data[year] || [];
+    const monthData = yearData.filter(d => {
+      const date = new Date(d.date);
+      return date.getMonth() + 1 === month;
+    });
+    return {
+      year,
+      total: monthData.reduce((sum, d) => sum + d[metric], 0)
+    };
+  });
+
   return (
-    <div style={{ height: '400px', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
-      <Line data={chartData} options={options} />
+    <div>
+      <div style={{ height: '400px', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <Line data={chartData} options={options} />
+      </div>
+      <div className="text-center text-sm mt-4">
+        <span>
+          {monthlyTotals.map((yearTotal, index) => {
+            const value = metric === 'sales' 
+              ? `¥${yearTotal.total.toLocaleString()}` 
+              : `${yearTotal.total}件`;
+            
+            return (
+              <span key={yearTotal.year}>
+                <span className="text-gray-600">{yearTotal.year}年:</span>
+                <span className="font-medium">{value}</span>
+                {index < monthlyTotals.length - 1 && <span className="mx-3 text-gray-400"> / </span>}
+              </span>
+            );
+          })}
+        </span>
+      </div>
     </div>
   );
 };
