@@ -10,6 +10,13 @@ export interface SalesData {
   sales_data: SalesRecord[];
 }
 
+export interface ArchiveData {
+  year: number;
+  archived_at: string;
+  total_records: number;
+  sales_data: SalesRecord[];
+}
+
 export interface ProcessedData {
   date: string;
   sales: number;

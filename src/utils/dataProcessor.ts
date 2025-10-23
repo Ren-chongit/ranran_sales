@@ -1,4 +1,4 @@
-import type { SalesData, SalesRecord, YearlyData, ComparisonData } from '../types/SalesData';
+import type { SalesData, SalesRecord, YearlyData, ComparisonData, ArchiveData } from '../types/SalesData';
 import { startOfWeek, startOfMonth, format, isWithinInterval, parseISO } from 'date-fns';
 
 export const loadSalesData = async (filename: string): Promise<SalesData | null> => {
@@ -10,6 +10,82 @@ export const loadSalesData = async (filename: string): Promise<SalesData | null>
     return await response.json();
   } catch (error) {
     console.error('Error loading sales data:', error);
+    return null;
+  }
+};
+
+/**
+ * アーカイブデータと最新データを結合して読み込む
+ * @param latestFilename 最新データのファイル名（例: "2025-10-22.json"）
+ * @returns 結合されたSalesData
+ */
+export const loadCombinedSalesData = async (latestFilename: string): Promise<SalesData | null> => {
+  try {
+    const currentYear = new Date().getFullYear();
+    const archiveYears: number[] = [];
+
+    // 2023年から前々年までのアーカイブを取得
+    for (let year = 2023; year < currentYear - 1; year++) {
+      archiveYears.push(year);
+    }
+
+    console.log('読み込み対象アーカイブ:', archiveYears);
+    console.log('最新データファイル:', latestFilename);
+
+    // アーカイブデータの読み込み（並列実行）
+    const archivePromises = archiveYears.map(async (year) => {
+      try {
+        const response = await fetch(`/data/archive/${year}.json`);
+        if (!response.ok) {
+          console.warn(`アーカイブデータが見つかりません: ${year}.json`);
+          return null;
+        }
+        const data: ArchiveData = await response.json();
+        console.log(`✅ ${year}年のアーカイブデータ読み込み成功:`, data.total_records, '件');
+        return data.sales_data;
+      } catch (error) {
+        console.warn(`アーカイブデータ読み込みエラー (${year}年):`, error);
+        return null;
+      }
+    });
+
+    // 最新データの読み込み
+    const latestResponse = await fetch(`/data/${latestFilename}`);
+    if (!latestResponse.ok) {
+      throw new Error(`最新データファイルが見つかりません: ${latestFilename}`);
+    }
+    const latestData: SalesData = await latestResponse.json();
+    console.log('✅ 最新データ読み込み成功:', latestData.total_records, '件');
+
+    // 全データを結合
+    const archiveResults = await Promise.all(archivePromises);
+    const allSalesData: SalesRecord[] = [];
+
+    // アーカイブデータを結合
+    archiveResults.forEach((archiveData) => {
+      if (archiveData) {
+        allSalesData.push(...archiveData);
+      }
+    });
+
+    // 最新データを結合
+    allSalesData.push(...latestData.sales_data);
+
+    console.log('📊 データ結合完了:', {
+      アーカイブ件数: allSalesData.length - latestData.sales_data.length,
+      最新データ件数: latestData.sales_data.length,
+      合計: allSalesData.length
+    });
+
+    // 結合されたデータを返す
+    return {
+      generated_at: latestData.generated_at,
+      total_records: allSalesData.length,
+      sales_data: allSalesData
+    };
+
+  } catch (error) {
+    console.error('データ結合エラー:', error);
     return null;
   }
 };

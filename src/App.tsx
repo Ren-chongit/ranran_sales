@@ -20,6 +20,13 @@ interface SalesData {
   sales_data: SalesRecord[];
 }
 
+interface ArchiveData {
+  year: number;
+  archived_at: string;
+  total_records: number;
+  sales_data: SalesRecord[];
+}
+
 interface ProcessedData {
   date: string;
   sales: number;
@@ -667,21 +674,93 @@ function App() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   // const [availableDates, setAvailableDates] = useState<string[]>([]);
 
+  // アーカイブデータと最新データを結合して読み込む
+  const loadCombinedSalesData = async (latestFilename: string): Promise<SalesData | null> => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const archiveYears: number[] = [];
+
+      // 2023年から前々年までのアーカイブを取得
+      for (let year = 2023; year < currentYear - 1; year++) {
+        archiveYears.push(year);
+      }
+
+      console.log('読み込み対象アーカイブ:', archiveYears);
+      console.log('最新データファイル:', latestFilename);
+
+      // アーカイブデータの読み込み（並列実行）
+      const archivePromises = archiveYears.map(async (year) => {
+        try {
+          const response = await fetch(`${import.meta.env.BASE_URL}data/archive/${year}.json`);
+          if (!response.ok) {
+            console.warn(`アーカイブデータが見つかりません: ${year}.json`);
+            return null;
+          }
+          const data: ArchiveData = await response.json();
+          console.log(`✅ ${year}年のアーカイブデータ読み込み成功:`, data.total_records, '件');
+          return data.sales_data;
+        } catch (error) {
+          console.warn(`アーカイブデータ読み込みエラー (${year}年):`, error);
+          return null;
+        }
+      });
+
+      // 最新データの読み込み
+      const latestResponse = await fetch(`${import.meta.env.BASE_URL}data/${latestFilename}`);
+      if (!latestResponse.ok) {
+        throw new Error(`最新データファイルが見つかりません: ${latestFilename}`);
+      }
+      const latestData: SalesData = await latestResponse.json();
+      console.log('✅ 最新データ読み込み成功:', latestData.total_records, '件');
+
+      // 全データを結合
+      const archiveResults = await Promise.all(archivePromises);
+      const allSalesData: SalesRecord[] = [];
+
+      // アーカイブデータを結合
+      archiveResults.forEach((archiveData) => {
+        if (archiveData) {
+          allSalesData.push(...archiveData);
+        }
+      });
+
+      // 最新データを結合
+      allSalesData.push(...latestData.sales_data);
+
+      console.log('📊 データ結合完了:', {
+        アーカイブ件数: allSalesData.length - latestData.sales_data.length,
+        最新データ件数: latestData.sales_data.length,
+        合計: allSalesData.length
+      });
+
+      // 結合されたデータを返す
+      return {
+        generated_at: latestData.generated_at,
+        total_records: allSalesData.length,
+        sales_data: allSalesData
+      };
+
+    } catch (error) {
+      console.error('データ結合エラー:', error);
+      return null;
+    }
+  };
+
   const loadDataForDate = async (targetDate: Date) => {
     try {
       setLoading(true);
       setError(null);
       console.log('基準日変更:', targetDate);
-      
+
       // 基準日に対応するJSONファイルを使用（ローカル時刻で計算）
       const year = targetDate.getFullYear();
       const month = String(targetDate.getMonth() + 1).padStart(2, '0');
       const day = String(targetDate.getDate()).padStart(2, '0');
       const latestDateStr = `${year}-${month}-${day}`;
       const filename = `${latestDateStr}.json`;
-      
+
       console.log(`使用するデータファイル: ${filename}, 基準日: ${latestDateStr}`);
-      
+
       // 既にデータが読み込まれている場合は再利用
       if (salesData && yearlyData && Object.keys(yearlyData).length > 0) {
         console.log('既存データを使用して比較計算のみ実行');
@@ -690,26 +769,25 @@ function App() {
         setLoading(false);
         return;
       }
-      
-      // 初回読み込みのみJSONファイルを取得
-      const response = await fetch(`${import.meta.env.BASE_URL}data/${filename}`);
-      
-      if (!response.ok) {
-        throw new Error(`データファイルが見つかりません: ${filename}`);
+
+      // 初回読み込み：アーカイブと最新データを結合
+      const data = await loadCombinedSalesData(filename);
+
+      if (!data) {
+        throw new Error(`データの読み込みに失敗しました: ${filename}`);
       }
-      
-      const data = await response.json();
-      console.log('JSONデータ読み込み完了:', filename);
+
+      console.log('全データ読み込み完了:', data.total_records, '件');
       setSalesData(data);
-      
+
       // データ処理
       const processed = processSalesData(data);
       setYearlyData(processed);
-      
+
       // 比較計算
       const comparison = calculateComparisons(processed, targetDate);
       setComparisonData(comparison);
-      
+
     } catch (err) {
       console.error('エラー:', err);
       setError(err instanceof Error ? err.message : '不明なエラー');
