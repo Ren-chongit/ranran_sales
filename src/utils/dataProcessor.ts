@@ -1,6 +1,23 @@
 import type { SalesData, SalesRecord, YearlyData, ComparisonData, ArchiveData } from '../types/SalesData';
 import { startOfWeek, startOfMonth, format, isWithinInterval, parseISO } from 'date-fns';
 
+const getComparisonYears = (baseDate: Date, yearlyData?: YearlyData): string[] => {
+  const baseYear = baseDate.getFullYear();
+  const fallback = Array.from({ length: 3 }, (_, i) => String(baseYear - 2 + i));
+  if (!yearlyData || Object.keys(yearlyData).length === 0) {
+    return fallback;
+  }
+  const availableYears = Object.keys(yearlyData).sort();
+  if (availableYears.length === 0) {
+    return fallback;
+  }
+  const availableSet = new Set(availableYears);
+  if (fallback.every(year => availableSet.has(year))) {
+    return fallback;
+  }
+  return availableYears.slice(-3);
+};
+
 export const loadSalesData = async (filename: string): Promise<SalesData | null> => {
   try {
     const response = await fetch(`/data/${filename}`);
@@ -133,7 +150,7 @@ export const calculateComparisons = (yearlyData: YearlyData, baseDate: Date): Co
     monthly: {}
   };
   
-  const years = ['2023', '2024', '2025'];
+  const years = getComparisonYears(baseDate, yearlyData);
   
   years.forEach(year => {
     const targetDate = new Date(baseDate);

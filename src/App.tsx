@@ -49,6 +49,23 @@ interface ComparisonData {
   };
 }
 
+const getComparisonYears = (baseDate: Date, yearlyData?: YearlyData): string[] => {
+  const baseYear = baseDate.getFullYear();
+  const fallback = Array.from({ length: 3 }, (_, i) => String(baseYear - 2 + i));
+  if (!yearlyData || Object.keys(yearlyData).length === 0) {
+    return fallback;
+  }
+  const availableYears = Object.keys(yearlyData).sort();
+  if (availableYears.length === 0) {
+    return fallback;
+  }
+  const availableSet = new Set(availableYears);
+  if (fallback.every(year => availableSet.has(year))) {
+    return fallback;
+  }
+  return availableYears.slice(-3);
+};
+
 // データ処理関数
 const processSalesData = (salesData: SalesData): YearlyData => {
   console.log('データ処理開始:', salesData.sales_data.length, '件');
@@ -87,11 +104,13 @@ const processSalesData = (salesData: SalesData): YearlyData => {
     yearlyData[year].sort((a, b) => a.date.localeCompare(b.date));
   });
   
-  console.log('年別整理完了:', {
-    '2023': yearlyData['2023']?.length || 0,
-    '2024': yearlyData['2024']?.length || 0,
-    '2025': yearlyData['2025']?.length || 0
-  });
+  const yearCounts = Object.keys(yearlyData)
+    .sort()
+    .reduce((acc, year) => {
+      acc[year] = yearlyData[year].length;
+      return acc;
+    }, {} as Record<string, number>);
+  console.log('年別整理完了:', yearCounts);
   
   return yearlyData;
 };
@@ -105,7 +124,7 @@ const calculateComparisons = (yearlyData: YearlyData, baseDate: Date): Compariso
     monthly: {}
   };
   
-  const years = ['2023', '2024', '2025'];
+  const years = getComparisonYears(baseDate, yearlyData);
   
   years.forEach(year => {
     const yearData = yearlyData[year] || [];
@@ -182,7 +201,8 @@ const ComparisonChart: React.FC<{
   type: 'daily' | 'weekly' | 'monthly';
   metric: 'sales' | 'count';
   baseDate: Date;
-}> = ({ data, type, metric, baseDate }) => {
+  years: string[];
+}> = ({ data, type, metric, baseDate, years }) => {
   const [isWideScreen, setIsWideScreen] = useState(false);
   
   useEffect(() => {
@@ -229,7 +249,6 @@ const ComparisonChart: React.FC<{
     }
   };
 
-  const years = ['2023', '2024', '2025'];
   const colors = ['rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(245, 101, 101, 0.8)'];
   const borderColors = ['rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 101, 101, 1)'];
 
@@ -239,8 +258,8 @@ const ComparisonChart: React.FC<{
       {
         label: metric === 'sales' ? '売上金額' : '件数',
         data: years.map(year => data[type][year]?.[metric] || 0),
-        backgroundColor: colors,
-        borderColor: borderColors,
+        backgroundColor: years.map((_, index) => colors[index % colors.length]),
+        borderColor: years.map((_, index) => borderColors[index % borderColors.length]),
         borderWidth: 1,
       },
     ],
@@ -284,7 +303,7 @@ const ComparisonChart: React.FC<{
           /* スマホ表示（縦並び） */
           <div className="space-y-2 text-sm">
             {years.map((year) => {
-              const yearData = data[type][year];
+              const yearData = data[type][year] || { sales: 0, count: 0 };
               return (
                 <div key={year} className="flex justify-between">
                   <span className="text-gray-600">{year}年:</span>
@@ -303,7 +322,7 @@ const ComparisonChart: React.FC<{
           <div className="text-center text-sm">
             <span>
               {years.map((year, index) => {
-                const yearData = data[type][year];
+                const yearData = data[type][year] || { sales: 0, count: 0 };
                 const value = metric === 'sales' 
                   ? `¥${yearData.sales.toLocaleString()}` 
                   : `${yearData.count}件`;
@@ -329,8 +348,8 @@ const MonthlyComparisonChart: React.FC<{
   data: YearlyData;
   metric: 'sales' | 'count';
   month: number;
-}> = ({ data, metric, month }) => {
-  const years = ['2023', '2024', '2025'];
+  years: string[];
+}> = ({ data, metric, month, years }) => {
   const colors = ['rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 101, 101, 1)'];
 
   // 指定月のデータのみ抽出
@@ -344,8 +363,8 @@ const MonthlyComparisonChart: React.FC<{
     return {
       label: `${year}年`,
       data: monthData.map(d => ({ x: new Date(d.date).getDate(), y: d[metric] })),
-      borderColor: colors[index],
-      backgroundColor: colors[index],
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length],
       tension: 0.1,
       pointRadius: 3,
       pointHoverRadius: 6,
@@ -454,15 +473,15 @@ const MonthlyComparisonChart: React.FC<{
 const YearlySalesChart: React.FC<{
   data: YearlyData;
   metric: 'sales' | 'count';
-}> = ({ data, metric }) => {
+  years: string[];
+}> = ({ data, metric, years }) => {
   const chartRef = useRef<any>(null);
-  const [dateRange, setDateRange] = useState({
-    start: '2023-01-01',
+  const [dateRange, setDateRange] = useState(() => ({
+    start: `${years[0]}-01-01`,
     end: new Date().toISOString().substring(0, 10)
-  });
+  }));
   const [filteredData, setFilteredData] = useState<YearlyData>({});
   
-  const years = ['2023', '2024', '2025'];
   const colors = ['rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 101, 101, 1)'];
 
   // データフィルタリング
@@ -477,6 +496,17 @@ const YearlySalesChart: React.FC<{
     });
     setFilteredData(filtered);
   }, [data, dateRange]);
+
+  useEffect(() => {
+    const minStart = `${years[0]}-01-01`;
+    setDateRange(prev => {
+      if (prev.start >= minStart) {
+        return prev;
+      }
+      const nextEnd = prev.end < minStart ? minStart : prev.end;
+      return { ...prev, start: minStart, end: nextEnd };
+    });
+  }, [years]);
 
   // フィルタリングされたデータから日付を取得してソート
   const allDates = new Set<string>();
@@ -605,7 +635,7 @@ const YearlySalesChart: React.FC<{
             6ヶ月
           </button>
           <button
-            onClick={() => setDateRange({ start: '2023-01-01', end: new Date().toISOString().substring(0, 10) })}
+            onClick={() => setDateRange({ start: `${years[0]}-01-01`, end: new Date().toISOString().substring(0, 10) })}
             className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
           >
             全期間
@@ -626,7 +656,7 @@ const YearlySalesChart: React.FC<{
               value={dateRange.start}
               onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
               className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0"
-              min="2023-01-01"
+              min={`${years[0]}-01-01`}
               max={dateRange.end}
             />
           </div>
@@ -673,6 +703,7 @@ function App() {
   const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   // const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const comparisonYears = getComparisonYears(baseDate, yearlyData);
 
   // アーカイブデータと最新データを結合して読み込む
   const loadCombinedSalesData = async (latestFilename: string): Promise<SalesData | null> => {
@@ -981,22 +1012,22 @@ function App() {
           <>
             {/* 比較チャート */}
             {comparisonData && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <ComparisonChart data={comparisonData} type="daily" metric={selectedMetric} baseDate={baseDate} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-white p-6 rounded-lg shadow-md">
+                    <ComparisonChart data={comparisonData} type="daily" metric={selectedMetric} baseDate={baseDate} years={comparisonYears} />
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md">
+                    <ComparisonChart data={comparisonData} type="weekly" metric={selectedMetric} baseDate={baseDate} years={comparisonYears} />
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md">
+                    <ComparisonChart data={comparisonData} type="monthly" metric={selectedMetric} baseDate={baseDate} years={comparisonYears} />
+                  </div>
                 </div>
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <ComparisonChart data={comparisonData} type="weekly" metric={selectedMetric} baseDate={baseDate} />
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <ComparisonChart data={comparisonData} type="monthly" metric={selectedMetric} baseDate={baseDate} />
-                </div>
-              </div>
             )}
 
             {/* 年別推移チャート */}
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-              <YearlySalesChart data={yearlyData} metric={selectedMetric} />
+              <YearlySalesChart data={yearlyData} metric={selectedMetric} years={comparisonYears} />
             </div>
 
             {/* 数値サマリー */}
@@ -1010,7 +1041,7 @@ function App() {
                         {period === 'daily' ? '当日比較' : period === 'weekly' ? '週間比較' : '月間比較'}
                       </h3>
                       <div className="space-y-2">
-                        {['2023', '2024', '2025'].map((year) => {
+                        {comparisonYears.map((year) => {
                           const data = comparisonData[period as keyof ComparisonData][year];
                           return (
                             <div key={year} className="flex justify-between">
@@ -1034,7 +1065,7 @@ function App() {
         ) : (
           /* 月別比較モード */
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <MonthlyComparisonChart data={yearlyData} metric={selectedMetric} month={selectedMonth} />
+            <MonthlyComparisonChart data={yearlyData} metric={selectedMetric} month={selectedMonth} years={comparisonYears} />
           </div>
         )}
         

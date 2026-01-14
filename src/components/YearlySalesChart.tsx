@@ -29,12 +29,14 @@ interface YearlySalesChartProps {
 }
 
 const YearlySalesChart: React.FC<YearlySalesChartProps> = ({ data, metric }) => {
-  const years = ['2023', '2024', '2025'];
-  const colors = {
-    '2023': 'rgba(59, 130, 246, 1)',   // blue-500
-    '2024': 'rgba(16, 185, 129, 1)',   // emerald-500
-    '2025': 'rgba(245, 101, 101, 1)',  // red-400
-  };
+  const fallbackYears = Array.from({ length: 3 }, (_, i) => String(new Date().getFullYear() - 2 + i));
+  const availableYears = Object.keys(data).sort();
+  const years = availableYears.length > 0 ? availableYears.slice(-3) : fallbackYears;
+  const colors = [
+    'rgba(59, 130, 246, 1)',   // blue-500
+    'rgba(16, 185, 129, 1)',   // emerald-500
+    'rgba(245, 101, 101, 1)',  // red-400
+  ];
 
   // 全ての日付を取得してソート
   const allDates = new Set<string>();
@@ -53,15 +55,15 @@ const YearlySalesChart: React.FC<YearlySalesChartProps> = ({ data, metric }) => 
   //   return currentDate.getMonth() !== prevDate.getMonth();
   // }).map(date => format(parseISO(date), 'yyyy/MM'));
 
-  const datasets = years.map(year => {
+  const datasets = years.map((year, index) => {
     const yearData = data[year] || [];
     const dataMap = new Map(yearData.map(d => [d.date, d[metric]]));
     
     return {
       label: `${year}年`,
       data: sortedDates.map(date => dataMap.get(date) || 0),
-      borderColor: colors[year as keyof typeof colors],
-      backgroundColor: colors[year as keyof typeof colors],
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length],
       tension: 0.1,
       pointRadius: 1,
       pointHoverRadius: 5,

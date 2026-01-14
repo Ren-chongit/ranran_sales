@@ -28,18 +28,20 @@ interface ComparisonChartProps {
 }
 
 const ComparisonChart: React.FC<ComparisonChartProps> = ({ data, type, metric, baseDate }) => {
-  const years = ['2023', '2024', '2025'];
-  const colors = {
-    '2023': 'rgba(59, 130, 246, 0.8)',   // blue-500
-    '2024': 'rgba(16, 185, 129, 0.8)',   // emerald-500
-    '2025': 'rgba(245, 101, 101, 0.8)',  // red-400
-  };
+  const fallbackYears = Array.from({ length: 3 }, (_, i) => String(baseDate.getFullYear() - 2 + i));
+  const yearsFromData = Object.keys(data[type] || {}).sort();
+  const years = yearsFromData.length > 0 ? yearsFromData : fallbackYears;
+  const colors = [
+    'rgba(59, 130, 246, 0.8)',   // blue-500
+    'rgba(16, 185, 129, 0.8)',   // emerald-500
+    'rgba(245, 101, 101, 0.8)',  // red-400
+  ];
   
-  const borderColors = {
-    '2023': 'rgba(59, 130, 246, 1)',
-    '2024': 'rgba(16, 185, 129, 1)',
-    '2025': 'rgba(245, 101, 101, 1)',
-  };
+  const borderColors = [
+    'rgba(59, 130, 246, 1)',
+    'rgba(16, 185, 129, 1)',
+    'rgba(245, 101, 101, 1)',
+  ];
 
   // 期間文字列を生成
   const getPeriodString = () => {
@@ -80,8 +82,8 @@ const ComparisonChart: React.FC<ComparisonChartProps> = ({ data, type, metric, b
       {
         label: metric === 'sales' ? '売上金額' : '件数',
         data: years.map(year => data[type][year]?.[metric] || 0),
-        backgroundColor: years.map(year => colors[year as keyof typeof colors]),
-        borderColor: years.map(year => borderColors[year as keyof typeof borderColors]),
+        backgroundColor: years.map((_, index) => colors[index % colors.length]),
+        borderColor: years.map((_, index) => borderColors[index % borderColors.length]),
         borderWidth: 1,
       },
     ],
